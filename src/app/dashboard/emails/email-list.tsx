@@ -50,7 +50,7 @@ export const EmailList: React.FC<{
       }
       return await response.json();
     },
-    refetchInterval: 1000,
+    refetchInterval: 15000,
   });
 
   const totalPages = Math.ceil(emailsQuery.data.total / count);

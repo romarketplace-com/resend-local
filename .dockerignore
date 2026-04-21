@@ -1,0 +1,11 @@
+.git
+.github
+node_modules
+.next
+dist
+coverage
+requests
+resend-local.sqlite
+Dockerfile
+docker-compose.yml
+README.md

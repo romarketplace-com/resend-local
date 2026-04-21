@@ -14,7 +14,8 @@ program
 
 const options = program.opts();
 
-const PORT = options.port;
+const PORT = process.env.PORT || options.port;
+console.log(`Starting server on port ${PORT}...`);
 
 const __filename = fileURLToPath(import.meta.url);
 

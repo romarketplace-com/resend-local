@@ -3,10 +3,8 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 
-# Better caching: install deps before copying the whole repo
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
-# Corepack is built into modern Node images
 RUN corepack enable && \
     pnpm fetch --frozen-lockfile
 
@@ -17,11 +15,17 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 COPY --from=deps /root/.local/share/pnpm /root/.local/share/pnpm
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
 RUN corepack enable && \
     pnpm install --frozen-lockfile --offline
 
 COPY . .
+
+# build.ts already:
+# - runs next build
+# - assembles dist/app
+# - creates dist/app/resend-local.sqlite
 RUN pnpm build
 
 FROM node:22-alpine AS runner
@@ -32,16 +36,17 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=8005
 ENV HOSTNAME=0.0.0.0
 
-# Non-root runtime
 RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
 
-# Copy only the standalone runtime and static assets
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
+# Copy only the prepared runtime bundle
+COPY --from=builder /app/dist/app ./
 
-# If the app writes a SQLite DB or request files locally, give it a writable dir
-RUN mkdir -p /data && chown -R nextjs:nodejs /app /data
+# Prepare persistent db path
+RUN mkdir -p /data && \
+    chown -R nextjs:nodejs /app /data && \
+    if [ ! -e /data/resend-local.sqlite ]; then cp /app/resend-local.sqlite /data/resend-local.sqlite; fi && \
+    rm -f /app/resend-local.sqlite && \
+    ln -s /data/resend-local.sqlite /app/resend-local.sqlite
 
 USER nextjs
 

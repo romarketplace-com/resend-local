@@ -20,7 +20,6 @@ await fs.remove("dist/app");
 
 console.log("copying files required for the app");
 await fs.copy(".next/standalone", "dist/app");
-await fs.remove("dist/app/node_modules");
 await fs.copy(".next/static", "dist/app/.next/static");
 await fs.copy("public", "dist/app/public");
 

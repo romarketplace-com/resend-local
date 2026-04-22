@@ -4,9 +4,7 @@ FROM node:22-alpine AS deps
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-
-RUN corepack enable && \
-    pnpm fetch --frozen-lockfile
+RUN corepack enable && pnpm fetch --frozen-lockfile
 
 FROM node:22-alpine AS builder
 WORKDIR /app
@@ -16,16 +14,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 COPY --from=deps /root/.local/share/pnpm /root/.local/share/pnpm
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-
-RUN corepack enable && \
-    pnpm install --frozen-lockfile --offline
+RUN corepack enable && pnpm install --frozen-lockfile --offline
 
 COPY . .
-
-# build.ts already:
-# - runs next build
-# - assembles dist/app
-# - creates dist/app/resend-local.sqlite
 RUN pnpm build
 
 FROM node:22-alpine AS runner
@@ -38,10 +29,8 @@ ENV HOSTNAME=0.0.0.0
 
 RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
 
-# Copy only the prepared runtime bundle
 COPY --from=builder /app/dist/app ./
 
-# Prepare persistent db path
 RUN mkdir -p /data && \
     chown -R nextjs:nodejs /app /data && \
     if [ ! -e /data/resend-local.sqlite ]; then cp /app/resend-local.sqlite /data/resend-local.sqlite; fi && \

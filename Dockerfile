@@ -32,8 +32,9 @@ RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
 COPY --from=builder /app/dist/app ./
 
 RUN mkdir -p /data && \
+    chmod 755 /data && \
     chown -R nextjs:nodejs /app /data && \
-    if [ ! -e /data/resend-local.sqlite ]; then cp /app/resend-local.sqlite /data/resend-local.sqlite; fi && \
+    if [ ! -e /data/resend-local.sqlite ]; then cp /app/resend-local.sqlite /data/resend-local.sqlite && chmod 666 /data/resend-local.sqlite; fi && \
     rm -f /app/resend-local.sqlite && \
     ln -s /data/resend-local.sqlite /app/resend-local.sqlite
 

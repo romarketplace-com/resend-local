@@ -1,8 +1,5 @@
 # syntax=docker/dockerfile:1.7
 
-# -----------------------
-# Deps
-# -----------------------
 FROM node:22-alpine AS deps
 WORKDIR /app
 
@@ -27,7 +24,13 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile --offline
 
 COPY . .
+
+# Build application
 RUN pnpm build
+
+# Create persistent sqlite DB file during build so it can be copied into the runtime image
+# This uses the `db:migrate` script defined in package.json which runs drizzle-kit push
+RUN pnpm db:migrate
 
 # -----------------------
 # Runner
@@ -44,14 +47,19 @@ ENV DB_PATH=/data/resend-local.sqlite
 RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
 RUN corepack enable
 
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
+# runtime app only
+COPY --from=builder --chown=nextjs:nodejs /app/dist ./
+COPY --from=builder --chown=nextjs:nodejs /app/dist/app/init-server.js ./
+# copy generated sqlite DB from builder into app directory so init script can move it into /data
+COPY --from=builder --chown=nextjs:nodejs /app/resend-local.sqlite ./resend-local.sqlite
 
-# RUN chown -R nextjs:nodejs ./
+# ensure writable DB directory exists and is owned by runtime user
+RUN mkdir -p /data && chown -R nextjs:nodejs /data && chmod 0777 /data
 
 USER nextjs
 
 EXPOSE 8005
 
-CMD ["sh", "-c", "npm run db:migrate && npm run start:prod"]
+
+# Start server with database initialization on startup
+CMD ["sh", "-c", "cp ./resend-local.sqlite /data/resend-local.sqlite && chown -R nextjs:nodejs /data && node ./app/init-server.js"]

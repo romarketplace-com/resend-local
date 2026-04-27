@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawnSync, spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Command } from "commander";
@@ -23,7 +23,8 @@ const __dirname = path.dirname(__filename);
 
 const cwd = path.join(__dirname, "app");
 
-const DATABASE_URL = "file:resend-local.sqlite";
+// Use in-memory database for ephemeral state between container instances
+const DATABASE_URL = process.env.DATABASE_URL || "file::memory:?cache=shared";
 
 spawn("node", ["server.js"], {
   cwd: cwd,

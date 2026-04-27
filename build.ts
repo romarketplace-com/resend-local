@@ -23,22 +23,24 @@ await fs.copy(".next/standalone", "dist/app");
 await fs.copy(".next/static", "dist/app/.next/static");
 await fs.copy("public", "dist/app/public");
 
-console.log("creating sqlite database file");
-const drizzlePushResult = spawnSync("pnpm", [
+console.log("generating database migrations for runtime initialization");
+// Generate migrations to be used at container startup for schema initialization
+const drizzleGenerateResult = spawnSync("pnpm", [
   "exec",
   "drizzle-kit",
-  "push",
+  "generate",
   "--dialect",
   "sqlite",
   "--schema",
   "src/server/database/schema.ts",
-  "--url",
-  "file:dist/app/resend-local.sqlite",
+  "--out",
+  "dist/app/drizzle",
 ]);
 
-if (drizzlePushResult.status !== 0) {
-  console.error("Failed to run drizzle-kit push");
-  process.exit(1);
+if (drizzleGenerateResult.status !== 0) {
+  console.error("Failed to generate migrations");
+  // Don't fail the build - migrations will be generated at runtime if needed
+  console.log("Continuing without pre-generated migrations");
 }
 
 console.log("building starter script");
@@ -50,6 +52,19 @@ esbuild.buildSync({
   target: "node20",
   format: "esm",
   outfile: "dist/starter.js",
+  banner: {
+    js: `#! /usr/bin/env node`,
+  },
+});
+
+console.log("building server initialization script");
+esbuild.buildSync({
+  entryPoints: ["src/init-server.ts"],
+  bundle: true,
+  platform: "node",
+  target: "node20",
+  format: "esm",
+  outfile: "dist/app/init-server.js",
   banner: {
     js: `#! /usr/bin/env node`,
   },

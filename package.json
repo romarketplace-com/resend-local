@@ -29,7 +29,10 @@
     "generate-resend-hono": "hono-takibi ./resend-openapi.yaml -o ./src/server/resend-routes.ts",
     "requests": "RESEND_BASE_URL=http://localhost:8005 pnpm tsx",
     "changeset:version": "changeset version && pnpm install --lockfile-only",
-    "changeset:publish": "pnpm run build && pnpm exec changeset publish"
+    "changeset:publish": "pnpm run build && pnpm exec changeset publish",
+    "db:migrate": "drizzle-kit push --dialect sqlite --schema src/server/database/schema.ts --url file:resend-local.sqlite",
+    "db:prepare": "pnpm db:migrate",
+    "start:prod": "node server.js"
   },
   "engines": {
     "node": ">=20.9.0"
